@@ -24,4 +24,4 @@ venv/
 .pip-tools
 pipfile.lock
 
-personal.env
+*.env
