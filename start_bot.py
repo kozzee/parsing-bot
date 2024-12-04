@@ -2,7 +2,8 @@ import logging, asyncio, os
 
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
-from heand.start import start_rt
+from heand.start_rout import start_router
+from pars.pars_rout import pars_router
 
 load_dotenv()
 
@@ -14,7 +15,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 async def main():
-    dp.include_router(start_rt)
+    dp.include_router(start_router)
+    dp.include_router(pars_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

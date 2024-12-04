@@ -1,7 +1,7 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 
-def main_kb():
+def main_kb():            #Клавиатура, которая появится первой, после команды /start
     kb = [
         [KeyboardButton(text="🔍 Парсинг")]
         ]
