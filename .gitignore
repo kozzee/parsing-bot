@@ -22,3 +22,5 @@ venv/
 # Конфигурационные файлы
 .pip-tools
 pipfile.lock
+
+personal.env
