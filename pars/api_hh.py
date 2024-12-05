@@ -5,7 +5,7 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'  #тут я пытаюсь притворяться браузером
 }
 
-def get_soup(page=0, search='python', salary='60000'):
+def get_soup(page, search='python', salary='60000'):
     url = f'https://hh.ru/search/vacancy?area=1&search_field=name&search_field=company_name&search_field=description&enable_snippets=true&experience=noExperience&text={search}&salary={salary}&only_with_salary={salary_bool}&page={str(page)}'  #ссылка по которой буду парсить
     response = requests.get(url, headers=headers)
     html_code = response.text
@@ -27,8 +27,8 @@ def get_number_of_vacation(): #функция возвращает количе�
 
 print(get_number_of_vacation())
 
-def extract_vacancies():
-    bs = get_soup()
+def extract_vacancies(page=0):
+    bs = get_soup(page)
     vacancies = [] #здесь будут данные вакансий
     containers = bs.find_all("div", {"class": "vacancy-info--ieHKDTkezpEj0Gsx"}) #разбить страницу по вакансиям
     for container in containers:
