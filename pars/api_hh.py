@@ -5,7 +5,11 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'  #тут я пытаюсь притворяться браузером
 }
 
-url = 'https://hh.ru/search/vacancy?text=python&salary=&ored_clusters=true&enable_snippets=true&area=1&hhtmFrom=vacancy_search_list&hhtmFromLabel=vacancy_search_line'  #ссылка по которой буду парсить
+search = 'python'
+salary = '60000'
+page = '0'
+salary_bool = 'true'
+url = f'https://hh.ru/search/vacancy?area=1&search_field=name&search_field=company_name&search_field=description&enable_snippets=true&experience=noExperience&text={search}&salary={salary}&only_with_salary={salary_bool}&page={page}'  #ссылка по которой буду парсить
 response = requests.get(url, headers=headers)
 html_code = response.text
 bs = BeautifulSoup(html_code, 'html.parser')
@@ -22,7 +26,7 @@ def get_number_of_vacation(): #функция возвращает количе�
         vacancies_number = ''.join(filter(str.isdigit, vacancies_text))
     return vacancies_number
 
-
+print(get_number_of_vacation())
 
 def extract_vacancies():
     vacancies = [] #здесь будут данные вакансий
@@ -61,11 +65,3 @@ def extract_vacancies():
         })
     
     return vacancies
-
-vacancies = extract_vacancies()
-for vacancy in vacancies:
-    print(f"Название вакансии: {vacancy['title']}")
-    print(f"Работодатель: {vacancy['employer']}")
-    print(f"Ссылка на вакансию: {vacancy['link']}")
-    print(f"Описание вакансии: {vacancy['description']}")
-    print("\n")
