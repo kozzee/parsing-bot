@@ -22,42 +22,50 @@ def get_number_of_vacation(): #функция возвращает количе�
         vacancies_number = ''.join(filter(str.isdigit, vacancies_text))
     return vacancies_number
 
+
+
 def extract_vacancies():
-    vacancies = []
-    containers = bs.find_all("div", {"class": "vacancy-info--ieHKDTkezpEj0Gsx"})
+    vacancies = [] #здесь будут данные вакансий
+    containers = bs.find_all("div", {"class": "vacancy-info--ieHKDTkezpEj0Gsx"}) #разбить страницу по вакансиям
     for container in containers:
+
         title_element = container.find("h2", {"data-qa": "bloko-header-2"})
-        
         if title_element is not None:
             title = title_element.text.strip()
         else:
             continue
         
         employer_element = container.find("a", {"data-qa": "vacancy-serp__vacancy-employer"})
-        
         if employer_element is not None:
             employer = employer_element.text.strip()
         else:
             continue
         
         description_elements = container.find_all("div", {"data-qa": "vacancy-serp__vacancy_snippet_responsibility"})
-        
-        if len(description_elements) > 0:
+        if len(description_elements) > 0: #проверка есть ли описание
             description = description_elements[0].text.strip()
-            
-            # Дополнительно можно добавить описание требований, если нужно
             requirement_elements = container.find_all("div", {"data-qa": "vacancy-serp__vacancy_snippet_requirement"})
             if len(requirement_elements) > 0:
                 description += "\n\nТребования:\n" + requirement_elements[0].text.strip()
         else:
             description = ""
-        
+
+        link_block = container.select_one('a[data-qa="serp-item__title"]')
+        link_url = link_block['href'] if link_block else ''
+
         vacancies.append({
             'title': title,
             'employer': employer,
-            'description': description
+            'description': description,
+            'link': link_url
         })
     
     return vacancies
 
 vacancies = extract_vacancies()
+for vacancy in vacancies:
+    print(f"Название вакансии: {vacancy['title']}")
+    print(f"Работодатель: {vacancy['employer']}")
+    print(f"Ссылка на вакансию: {vacancy['link']}")
+    print(f"Описание вакансии: {vacancy['description']}")
+    print("\n")
