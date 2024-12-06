@@ -1,6 +1,18 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 
+def main_kb():
+    kb = [
+        [KeyboardButton(text='🔍 Парсинг')]
+    ]
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=kb,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        input_field_placeholder='Выбери действие'
+    )
+    return keyboard
+
 def one_key_kb(text, placeholder='Нажми на кнопку'):
     kb = [
         [KeyboardButton(text=text)]

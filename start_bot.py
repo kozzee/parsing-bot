@@ -2,11 +2,11 @@ import logging, asyncio, os
 
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
-from heand.start_rout import start_router
-from pars.pars_rout import pars_router
-from pars import api_hh
+from routers.start_rout import start_router
+from routers.pars_rout import pars_router
 
-load_dotenv()
+
+#load_dotenv()
 
 
 bot = Bot(token=os.getenv('BOT_TOKEN'))   #токен из переменной окружения

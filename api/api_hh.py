@@ -1,24 +1,23 @@
-import requests
+import requests, os
 
 def simple_clean(text):
     if text is None:
-        return ''  # Возвращаем пустую строку или любое другое значение по умолчанию
-    
-    return text.replace('<highlighttext>', '').replace('</highlighttext>', '')
+        return ''  
+    return text.replace('<highlighttext>', '').replace('</highlighttext>', '') #удаляю html теги, которые иногда проскальзывают
 
 
 def get_token_api():
     
     headers = {
-        'HH-User-Agent': 'MyApp/1.0 (contact@example.com)'}
+        'HH-User-Agent': 'Telegram bot'}
     # URL для получения токена
     url = 'https://api.hh.ru/token'
 
-    # Замените 'YOUR_CLIENT_ID' и 'YOUR_CLIENT_SECRET' на ваши данные
+    
     data = {
-        'grant_type': 'client_credentials',  # Тип авторизации
-        'client_id': 'P7D2ORKJR7UN6DL6NAL743IAO1KEDU1C3AA6SKJSSBLG9ALBNSN9FF6OQL0B2DH2',       # Идентификатор клиента
-        'client_secret': 'TLT1NPOHSOVN9Q42U1GA26R6T6M6QP7PRQAG9VD80ES0PQ7JN13PGKFRFT4OLO4Q' # Секрет клиента
+        'grant_type': 'client_credentials', 
+        'client_id': os.getenv('CLIENT_ID'),       
+        'client_secret': os.getenv('CLIENT_SECRET') 
     }
 
     # Выполняем POST-запрос для получения токена
