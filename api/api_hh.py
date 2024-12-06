@@ -12,7 +12,6 @@ def get_token_api():
         'HH-User-Agent': 'Telegram bot'}
     # URL для получения токена
     url = 'https://api.hh.ru/token'
-
     
     data = {
         'grant_type': 'client_credentials', 
@@ -20,7 +19,6 @@ def get_token_api():
         'client_secret': os.getenv('CLIENT_SECRET') 
     }
 
-    # Выполняем POST-запрос для получения токена
     response = requests.post(url, headers=headers, data=data)
 
     if response.status_code == 200:
@@ -46,7 +44,9 @@ def get_vacancies(page=0):
         'area': 1,       # Регион
         'per_page': 10,  # Количество вакансий на странице
         'page': page,        # Номер страницы\
-        'text': 'python'
+        'text': 'python',
+        'salary': '70000',
+        'experience': 'noExperience'
     }
 
     try:
