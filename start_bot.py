@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 from heand.start_rout import start_router
 from pars.pars_rout import pars_router
+from pars import api_hh
 
 load_dotenv()
 

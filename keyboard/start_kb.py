@@ -1,14 +1,17 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 
-def main_kb():            #Клавиатура, которая появится первой, после команды /start
+def one_key_kb(text, placeholder='Нажми на кнопку'):
     kb = [
-        [KeyboardButton(text="🔍 Парсинг")]
-        ]
+        [KeyboardButton(text=text)]
+    ]
     keyboard = ReplyKeyboardMarkup(
         keyboard=kb,
         resize_keyboard=True,
         one_time_keyboard=True,
-        input_field_placeholder="Давай, выбирай"
+        input_field_placeholder=placeholder
     )
     return keyboard
+
+
+
