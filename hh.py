@@ -35,6 +35,7 @@ def get_vacancies(page=0):
 
     url = 'https://api.hh.ru/vacancies'
     auth = 'APPLNR71F4DBJBQGBCDIADJR1U1D2B34NCF8MTNSTBILGLV18NI5SJT41M5KSUT6'
+    print(auth)
     vacan = []
 
     headers = {
