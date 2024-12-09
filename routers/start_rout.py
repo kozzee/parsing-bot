@@ -1,14 +1,16 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
-from keyboard.keyboard import one_key_kb, main_kb
+from keyboard.keyboard import one_key_kb, main_kb, rss_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+
 
 
 class MainState(StatesGroup):
     main_menu = State()
     parsing_state = State()
+    rss_state = State()
 
 start_router = Router()
 
@@ -22,3 +24,10 @@ async def parsing(message: Message, state: FSMContext):
     search_text = 'python'
     await message.answer(f'Я буду отправлять по 10 вакансий по запросу {search_text}. Для продолжения нажмите кнопку ниже', reply_markup=one_key_kb('Продолжить'))
     await state.set_state(MainState.parsing_state)
+
+@start_router.message(F.text == 'Новости', MainState.main_menu)
+async def rss_search(message: Message, state: FSMContext):
+    await state.set_state(MainState.rss_state)
+    await message.answer("Перехожу в режим перессылки сообщений...", reply_markup=rss_kb())
+    
+
