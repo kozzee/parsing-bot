@@ -1,6 +1,6 @@
 import mysql.connector, os
+from config import logger
 
-pas = 'Ibra0550-'
 def connection_database(password):
     conn = mysql.connector.connect(
         user='root',
@@ -11,14 +11,15 @@ def connection_database(password):
     print(conn)
     return conn
 
-def insert_user(conn, table, data):
-    cursor = conn.cursor(buffered=True)
-    
-    query = f"INSERT INTO {table} ({columns}) VALUES ({values})"
-    cursor.execute(query)
 
-    conn.commit()
-    cursor.close()
+# def insert_user(conn, table, data):
+#     cursor = conn.cursor(buffered=True)
+    
+#     query = f"INSERT INTO {table} ({columns}) VALUES ({values})"
+#     cursor.execute(query)
+
+#     conn.commit()
+#     cursor.close()
 
 def check_tgid(conn, tg_id):
     try:
@@ -39,8 +40,37 @@ def add_user(conn, tg_id):
         query = "INSERT INTO users (tg_id) VALUES (%s)"
         cursor.execute(query, (tg_id,))
         conn.commit()
-        cursor.close()
         print(f'Новый пользователь {tg_id}')
-    except Exception as e:
-        print(f'Ошибка добавления пользователя: {e}')
+        return True
+    except mysql.connector.Error as e:
+        print(f'Ошибка добавления пользователя в базу: {e}')
+        logger.error(f'Ошибка добавления пользователя в базу: {e}')
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+
+
+def get_from_database(conn, data, table, value=''):
+    try:
+        cursor = conn.cursor()
+        if value:
+            query = f"SELECT {data} FROM {table} WHERE {value}"
+        else:
+            query = f"SELECT {data} FROM {table}"
+        cursor.execute(query)
+        result = [row[0] for row in cursor.fetchall()]
+        return result
+    except mysql.connector.Error as e:
+        print(f'Ошибка получения данных из базы: {e}')
+        logger.error(f'Ошибка получения данных из базы: {e}')
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+
+
+    
+
+
     
