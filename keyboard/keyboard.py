@@ -42,7 +42,7 @@ def two_key_kb(first_button_text, second_button_text):
 
 def rss_kb():
     kb = [
-        [KeyboardButton(text='Начать перессылку')],
+        [KeyboardButton(text='Начать пересылку')],
         [KeyboardButton(text='Добавить источник')],
         [KeyboardButton(text='Удалить источник')]
     ]
