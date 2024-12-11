@@ -11,16 +11,6 @@ def connection_database(password):
     print(conn)
     return conn
 
-
-# def insert_user(conn, table, data):
-#     cursor = conn.cursor(buffered=True)
-    
-#     query = f"INSERT INTO {table} ({columns}) VALUES ({values})"
-#     cursor.execute(query)
-
-#     conn.commit()
-#     cursor.close()
-
 def check_tgid(conn, tg_id):
     try:
         cursor = conn.cursor()
@@ -35,6 +25,7 @@ def check_tgid(conn, tg_id):
         return None
     
 def add_user(conn, tg_id):
+    #Добавляем пользователя в базу данных
     try:
         cursor = conn.cursor(buffered=True)
         query = "INSERT INTO users (tg_id) VALUES (%s)"
@@ -52,6 +43,19 @@ def add_user(conn, tg_id):
 
 
 def get_from_database(conn, data, table, condition=None, params=None):     #получаем данные из базы данных
+    """
+    Получает данные из базы данных.
+
+    Args:
+        conn: Объект подключения к базе данных.
+        data: Список названий столбцов.
+        table: Название таблицы.
+        condition: Условие для выборки данных (необязательный параметр).
+        params: Список параметров для условия (необязательный параметр).
+
+    Returns:
+        Список кортежей с данными, если данные получены успешно, иначе None.
+    """
     try:
         cursor = conn.cursor() 
         columns = ', '.join(data) #соединяем названия столбцов в строку
@@ -74,6 +78,18 @@ def get_from_database(conn, data, table, condition=None, params=None):     #по
             cursor.close()
 
 def add_data(conn, table, columns, values):
+    """
+    Добавляет данные в таблицу базы данных.
+
+    Args:
+        conn: Объект подключения к базе данных.
+        table: Название таблицы.
+        columns: Список названий столбцов.
+        values: Список значений для добавления.
+
+    Returns:
+        True, если данные успешно добавлены, иначе False.
+    """
     try:
         cursor = conn.cursor()
         placeholders = ', '.join(['%s'] * len(columns))  # Создаем плейсхолдеры для значений
@@ -89,6 +105,35 @@ def add_data(conn, table, columns, values):
         if cursor:
             cursor.close()
 
+    
+
+def check_data(conn, table, first_value_column, second_value_column, first_value, second_value):
+    """
+    Проверяет наличие данных в таблице, удовлетворяющих заданным условиям.
+
+    Args:
+        conn: Объект подключения к базе данных.
+        table: Название таблицы.
+        first_value_column: Название столбца для первого условия.
+        second_value_column: Название столбца для второго условия.
+        first_value: Значение для сравнения в первом условии.
+        second_value: Значение для сравнения во втором условии.
+
+    Returns:
+        Список кортежей с результатами запроса или None, если произошла ошибка.
+    """
+    try:
+        cursor = conn.cursor()
+        query = f"SELECT 1 FROM {table} WHERE {first_value_column} = %s AND {second_value_column} = %s"
+        cursor.execute(query, (first_value, second_value))
+        result = cursor.fetchone()
+        return bool(result)
+    except mysql.connector.Error as e:
+        print(f'Ошибка проверки данных: {e}')
+        logger.error(f'Ошибка проверки данных: {e}')
+    finally:
+        if cursor:
+            cursor.close()
 
     
 

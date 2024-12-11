@@ -4,7 +4,7 @@ from aiogram.types import Message, CallbackQuery
 from keyboard.keyboard import one_key_kb, main_kb, source_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data
+from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data, check_data
 from routers.start_rout import MainState
 import os
 
@@ -54,16 +54,31 @@ async def add_rss(message: Message, state: FSMContext):
 async def add_source(call: CallbackQuery):
     name_source = call.data.replace('addsource_', '')
     print(name_source)
-    source_id = get_from_database(conn=conn, data=['source_id'], table='sources', condition='`name` = %s', params=(name_source,))[0][0]
+
+    source_data = get_from_database(conn=conn, data=['source_id'], table='sources', condition='`name` = %s', params=(name_source,))
+    if not source_data:
+        await call.answer('Источник не найден')
+        return
+
+    source_id = source_data[0][0]
     print(source_id)
-
     tg_id = call.from_user.id
-    user_id = get_from_database(conn=conn, data=['user_id'], table='users', condition='tg_id = %s', params=(tg_id,))[0][0]
-    print(user_id)
-    chek = add_data(conn=conn, columns=['user_id', 'source_id'], table='subscriptions', values=(user_id, source_id))
-    if chek:
-        await call.answer(f'Вы подписались на {name_source}')
-    else:
-        await call.answer('Произошла ошибка при подписке')
 
-    
+    user_data = get_from_database(conn=conn, data=['user_id'], table='users', condition='tg_id = %s', params=(tg_id,))
+    if not user_data:
+        await call.answer('Пользователь не найден')
+        return
+
+    user_id = user_data[0][0]
+    print(user_id)
+
+    if check_data(conn=conn, table='subscriptions', first_value_column='user_id',
+        second_value_column='source_id', first_value=user_id, second_value=source_id):
+        await call.answer('Вы уже подписаны на этот источник')
+        return  # Останавливаем выполнение, если связь существует
+
+
+    if not add_data(conn=conn, columns=['user_id', 'source_id'], table='subscriptions', values=(user_id, source_id)):
+        await call.answer('Произошла ошибка при подписке')
+    else:
+        await call.answer(f'Вы подписались на {name_source}')
