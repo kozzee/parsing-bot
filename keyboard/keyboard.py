@@ -1,5 +1,6 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
-
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardButton
 
 def main_kb():
     kb = [
@@ -53,3 +54,16 @@ def rss_kb():
         input_field_placeholder='Выберите команду'
     )
     return keyboard
+
+def source_kb(source: list) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for row in source:
+        name_source = row[0]
+        builder.row(
+            InlineKeyboardButton(
+                text=name_source,
+                callback_data=f'addsource_{name_source}'
+            )
+        )
+    builder.adjust(1)
+    return builder.as_markup()

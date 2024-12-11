@@ -1,10 +1,10 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message
-from keyboard.keyboard import one_key_kb, main_kb
+from aiogram.types import Message, CallbackQuery
+from keyboard.keyboard import one_key_kb, main_kb, source_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from rss.rss import connection_database, check_tgid, add_user, get_from_database
+from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data
 from routers.start_rout import MainState
 import os
 
@@ -14,7 +14,8 @@ class RssState(StatesGroup):
 
 rss_router = Router()
 
-conn = connection_database('Ibra0550-')
+conn = connection_database(os.getenv('DATABASE_PASSWORD'))
+
 
 @rss_router.message(F.text == 'Начать пересылку', MainState.rss_state)
 async def rss_message(message: Message, state: FSMContext):
@@ -34,11 +35,35 @@ async def start_rss(message: Message, state: FSMContext):
         await add_rss(message, state)
 
 
+
+
 @rss_router.message(F.text == 'Добавить источник', MainState.rss_state)
 async def add_rss(message: Message, state: FSMContext):
-    sources = get_from_database(conn=conn, data='`name`', table='sources')  
+    sources = get_from_database(conn=conn, data=['`name`'], table='sources')  
     text = ""
     for i, source in enumerate(sources, start=1):
-        text += f"{i}. {source}\n"
-    await message.answer(f"Вот список доступнЫх новостных источников \n\n {text}")
+        name = source[0]  # Получаем значение 'name' из кортежа
+        text += f"{i}. {name}\n"
+    await message.answer(f"Вот список доступнЫх новостных источников:", reply_markup=source_kb(source=sources))
     print(text)
+
+
+
+
+@rss_router.callback_query(F.data.startswith('addsource_'))
+async def add_source(call: CallbackQuery):
+    name_source = call.data.replace('addsource_', '')
+    print(name_source)
+    source_id = get_from_database(conn=conn, data=['source_id'], table='sources', condition='`name` = %s', params=(name_source,))[0][0]
+    print(source_id)
+
+    tg_id = call.from_user.id
+    user_id = get_from_database(conn=conn, data=['user_id'], table='users', condition='tg_id = %s', params=(tg_id,))[0][0]
+    print(user_id)
+    chek = add_data(conn=conn, columns=['user_id', 'source_id'], table='subscriptions', values=(user_id, source_id))
+    if chek:
+        await call.answer(f'Вы подписались на {name_source}')
+    else:
+        await call.answer('Произошла ошибка при подписке')
+
+    

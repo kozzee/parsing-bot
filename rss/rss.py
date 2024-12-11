@@ -51,20 +51,40 @@ def add_user(conn, tg_id):
             cursor.close()
 
 
-def get_from_database(conn, data, table, value=''):
+def get_from_database(conn, data, table, condition=None, params=None):     #получаем данные из базы данных
     try:
-        cursor = conn.cursor()
-        if value:
-            query = f"SELECT {data} FROM {table} WHERE {value}"
+        cursor = conn.cursor() 
+        columns = ', '.join(data) #соединяем названия столбцов в строку
+
+        if condition:   
+            query = f"SELECT {columns} FROM {table} WHERE {condition}" # формируем запрос в базу
         else:
-            query = f"SELECT {data} FROM {table}"
-        cursor.execute(query)
-        result = [row[0] for row in cursor.fetchall()]
+            query = f"SELECT {columns} FROM {table}"
+
+        cursor.execute(query, params)
+
+        result = cursor.fetchall() 
         return result
     except mysql.connector.Error as e:
         print(f'Ошибка получения данных из базы: {e}')
         logger.error(f'Ошибка получения данных из базы: {e}')
         return None
+    finally:
+        if cursor:
+            cursor.close()
+
+def add_data(conn, table, columns, values):
+    try:
+        cursor = conn.cursor()
+        placeholders = ', '.join(['%s'] * len(columns))  # Создаем плейсхолдеры для значений
+        query = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+        cursor.execute(query, values)
+        conn.commit()        
+        return True
+    except mysql.connector.Error as e:
+        print(f'Ошибка добавления данных в базу: {e}')
+        logger.error(f'ошибка добавления данных в базу: {e}')
+        return False
     finally:
         if cursor:
             cursor.close()
