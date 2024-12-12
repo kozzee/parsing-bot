@@ -82,3 +82,4 @@ async def add_source(call: CallbackQuery):
         await call.answer('Произошла ошибка при подписке')
     else:
         await call.answer(f'Вы подписались на {name_source}')
+

@@ -4,6 +4,10 @@ from aiogram.types import Message
 from keyboard.keyboard import one_key_kb, main_kb, rss_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from rss.rss import parsing_url  # Импортируем функцию напрямую из файла rss.py
+
+
+
 
 
 
@@ -16,6 +20,12 @@ start_router = Router()
 
 @start_router.message(CommandStart())
 async def star_cmd(message: Message, state: FSMContext):
+    arr = parsing_url(list_url=['https://www.vedomosti.ru/rss/news.xml'])
+    if arr: # Check if parsing returned a result. In case of error, it can return an empty list
+        title, description, link = arr[0] # Tuple unpacking
+        print(title)
+        print(description)
+        print(link) 
     await message.answer('Выбери, что надо и нажми кнопку', reply_markup=main_kb())
     await state.set_state(MainState.main_menu)
 

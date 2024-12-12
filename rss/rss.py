@@ -1,15 +1,25 @@
 import mysql.connector, os
 from config import logger
+import requests
+from bs4 import BeautifulSoup
+
+import mysql.connector
 
 def connection_database(password):
-    conn = mysql.connector.connect(
-        user='root',
-        password=password,
-        host='localhost',
-        database='rss'
-    )
-    print(conn)
-    return conn
+    try:
+        with mysql.connector.connect(
+            user='root',
+            password=password,
+            host='localhost',
+            database='rss'
+        ) as conn:
+            print("Соединение с базой данных установлено.")
+            yield conn  # Возвращаем соединение как генератор для использования в with
+    except mysql.connector.Error as e:
+        logger.error(f'Ошибка подключения к базе данных: {e}')
+        raise  # Передаем исключение дальше
+
+
 
 def check_tgid(conn, tg_id):
     try:
@@ -21,7 +31,10 @@ def check_tgid(conn, tg_id):
         print(result)
         return result
     
-    except Exception as e:
+    except mysql.connector.Error as e:
+        print(f'Ошибка проверки пользователя в базе: {e}')
+        logger.error(f'Ошибка проверки пользователя в базе: {e}')
+        #если пользователь не найден, возвращаем None
         return None
     
 def add_user(conn, tg_id):
@@ -135,7 +148,63 @@ def check_data(conn, table, first_value_column, second_value_column, first_value
         if cursor:
             cursor.close()
 
-    
 
 
-    
+def get_subscription_id_from_database(conn, user_id):
+    try:
+        cursor = conn.cursor()
+        query = f"SELECT source_id FROM subscriptions WHERE user_id = %s"
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+        return [row[0] for row in result] if result else []  # Возвращаем список source_id или пустой список, если подписок нет
+    except mysql.connector.Error as e:
+        print(f'Ошибка получения ID подписки из базы данных: {e}')
+        logger.error(f'Ошибка получения ID подписки из базы данных: {e}')
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+
+
+
+
+
+
+from bs4 import BeautifulSoup
+import requests
+
+def parsing_url(list_url):
+    results = []
+    for url in list_url:    
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'lxml-xml')
+            channel = soup.find('channel')
+            if channel:
+                item = channel.find('item')
+                if item:
+                    title = item.find('title')
+                    description = item.find('description')
+                    link = item.find('link') #Ищем ссылку
+
+                    title_text = title.text if title else "Заголовок отсутствует"
+                    description_text = description.text if description else "Описание отсутствует"
+                    link_text = link.text if link else "Ссылка отсутствует" 
+
+                    results.append((title_text, description_text, link_text)) # Ссылку в результат
+                else:
+                    logger.error(f"Ошибка парсинга URL {url}: Тег <item> не найден")
+            else:
+                 logger.error(f"Ошибка парсинга URL {url}: Тег <channel> не найден")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка при запросе к URL {url}: {e}")
+        except (AttributeError, IndexError) as e: 
+            logger.error(f"Ошибка парсинга URL {url}: {e}")
+    return results
+
+
+
+
+
+
