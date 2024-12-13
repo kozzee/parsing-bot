@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from keyboard.keyboard import one_key_kb, main_kb, source_kb, change_rss_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data, check_data, parsing_url, get_url_from_database, get_and_send_news
+from rss.rss import check_tgid, add_user, get_from_database, add_data, check_data, parsing_url, get_url_from_database, get_and_send_news
 from routers.start_rout import MainState
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import logger
@@ -15,8 +15,8 @@ import os
 rss_router = Router()
 
 
-conn = connection_database(os.getenv('DATABASE_PASSWORD'))
-scheduler = AsyncIOScheduler()  
+
+# scheduler = AsyncIOScheduler()  
 
 class RssState(StatesGroup):
     nosubscibing = State() #состояние если пользователя нет в базе данных
@@ -27,20 +27,30 @@ class RssState(StatesGroup):
 
 
 @rss_router.message(F.text == 'Начать пересылку', MainState.rss_state) #запускает планировщик
-async def rss_message(message: Message, state: FSMContext, bot: Bot):
-    check = check_tgid(conn=conn, tg_id=message.from_user.id)
+async def rss_message(message: Message, state: FSMContext, bot: Bot, data: dict):
+    tg_id = message.from_user.id
+    conn = await data['conn']()
+    check = check_tgid(conn=conn, tg_id=tg_id)
+    
     if check is None:
         await state.set_state(RssState.nosubscibing)
         await message.answer('Вы не подписывались на рассылку. Чтобы подписаться, нажмите на специальную кнопку', reply_markup=one_key_kb('Подписаться'))
         return
-    scheduler.add_job(send_news_periodically, "interval", minutes=1, args=(message.from_user.id, bot))
-    scheduler.start() 
+    if 'schedulers' not in data:
+        data['schedulers'] = {}
+    if tg_id not in data['schedulers']:
+        data['schedulers'][tg_id] = AsyncIOScheduler() #Создаём планировщик для каждого пользователя
+        data['schedulers'][tg_id].start() #Запускаем планировщик для каждого пользователя
+    data['schedulers'][tg_id].add_job(send_news_periodically, "interval", minutes=1,
+                                      args=(tg_id, bot), kwargs={'data': data})
+ 
     await message.answer('Ждите новых новостей')
 
 
 
 @rss_router.message(F.text == 'Подписаться', RssState.nosubscibing)
-async def start_rss(message: Message, state: FSMContext):
+async def start_rss(message: Message, state: FSMContext, data: dict):
+    conn = await data['conn']()
     chek = add_user(conn=conn, tg_id=message.from_user.id) #добавляет нового пользователя в базу
     if chek:
         await state.set_state(MainState.rss_state)
@@ -50,14 +60,16 @@ async def start_rss(message: Message, state: FSMContext):
 
 
 @rss_router.message(F.text == 'Добавить источник', MainState.rss_state)   #кнопка выводит источники для подписки
-async def add_rss(message: Message, state: FSMContext):
+async def add_rss(message: Message, state: FSMContext, data: dict):
+    conn = await data['conn']()
     sources = get_from_database(conn=conn, data=['`name`'], table='sources')  
     await message.answer(f"Вот список доступнЫх новостных источников:", reply_markup=source_kb(source=sources))
 
 
 
 @rss_router.callback_query(F.data.startswith('addsource_'))  #Обработка подписки на источник
-async def add_source(call: CallbackQuery):
+async def add_source(call: CallbackQuery, data: dict):
+    conn = await data['conn']()
     name_source = call.data.replace('addsource_', '')
     source_data = get_from_database(conn=conn, data=['source_id'], table='sources', condition='`name` = %s', params=(name_source,))
     if not source_data:
@@ -88,7 +100,8 @@ async def add_source(call: CallbackQuery):
 
 
 @rss_router.message(F.text == 'Показать последние новости', MainState.rss_state)
-async def show_news(message: Message, state: FSMContext):
+async def show_news(message: Message, state: FSMContext, data: dict):
+    conn = await data['conn']()
     user_id_data = get_from_database(conn, ['user_id'], 'users', 'tg_id = %s', (message.from_user.id,))
     if not user_id_data:
         await message.answer('Пользователь не найден')
@@ -122,13 +135,16 @@ async def change_rss(message: Message, state: FSMContext):
     await message.answer("Здесь вы можете управлять своими новостными источниками", reply_markup=change_rss_kb())
 
 
-@rss_router.message(F.text == 'Главное меню', MainState.rss_state)
-async def exit_rss(message: Message, state: FSMContext):
-    scheduler.shutdown()
+async def exit_rss(message: Message, state: FSMContext, data: dict): # Добавлено data
+    tg_id = message.from_user.id
+    if tg_id in data['schedulers']:
+        data['schedulers'][tg_id].shutdown()
+        del data['schedulers'][tg_id] # Удаляем планировщик после остановки
     await state.set_state(MainState.main_menu)
     await message.answer('Отправка сообщений остановлена', reply_markup=main_kb())
 
-async def send_news_periodically(user_id: int, bot: Bot):
+async def send_news_periodically(user_id: int, bot: Bot, data: dict):
+    conn = await data['conn']()
     """Функция для отправки новостей по расписанию."""
     try:
         # Получение объекта бота из диспетчера
