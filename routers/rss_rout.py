@@ -1,38 +1,47 @@
-from aiogram import Router, F
-from aiogram.filters import CommandStart, Command
+from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
-from keyboard.keyboard import one_key_kb, main_kb, source_kb
+from keyboard.keyboard import one_key_kb, main_kb, source_kb, change_rss_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data, check_data, parsing_url, get_url_from_database, check_news
+from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data, check_data, parsing_url, get_url_from_database, get_and_send_news
 from routers.start_rout import MainState
-import os
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import logger
 
+import os
 
-
-class RssState(StatesGroup):
-    nosubscibing = State()
 
 
 rss_router = Router()
 
+
 conn = connection_database(os.getenv('DATABASE_PASSWORD'))
+scheduler = AsyncIOScheduler()  
+
+class RssState(StatesGroup):
+    nosubscibing = State() #состояние если пользователя нет в базе данных
 
 
-@rss_router.message(F.text == 'Начать пересылку', MainState.rss_state)
-async def rss_message(message: Message, state: FSMContext):
-    await message.answer('Начинаю')
+
+
+
+
+@rss_router.message(F.text == 'Начать пересылку', MainState.rss_state) #запускает планировщик
+async def rss_message(message: Message, state: FSMContext, bot: Bot):
     check = check_tgid(conn=conn, tg_id=message.from_user.id)
     if check is None:
         await state.set_state(RssState.nosubscibing)
         await message.answer('Вы не подписывались на рассылку. Чтобы подписаться, нажмите на специальную кнопку', reply_markup=one_key_kb('Подписаться'))
         return
-    await message.answer('Подписка работает')
+    scheduler.add_job(send_news_periodically, "interval", minutes=1, args=(message.from_user.id, bot))
+    scheduler.start() 
+    await message.answer('Ждите новых новостей')
+
+
 
 @rss_router.message(F.text == 'Подписаться', RssState.nosubscibing)
 async def start_rss(message: Message, state: FSMContext):
-    chek = add_user(conn=conn, tg_id=message.from_user.id)
+    chek = add_user(conn=conn, tg_id=message.from_user.id) #добавляет нового пользователя в базу
     if chek:
         await state.set_state(MainState.rss_state)
         await add_rss(message, state)
@@ -40,31 +49,22 @@ async def start_rss(message: Message, state: FSMContext):
 
 
 
-@rss_router.message(F.text == 'Добавить источник', MainState.rss_state)
+@rss_router.message(F.text == 'Добавить источник', MainState.rss_state)   #кнопка выводит источники для подписки
 async def add_rss(message: Message, state: FSMContext):
     sources = get_from_database(conn=conn, data=['`name`'], table='sources')  
-    text = ""
-    for i, source in enumerate(sources, start=1):
-        name = source[0]  # Получаем значение 'name' из кортежа
-        text += f"{i}. {name}\n"
     await message.answer(f"Вот список доступнЫх новостных источников:", reply_markup=source_kb(source=sources))
-    print(text)
 
 
 
-
-@rss_router.callback_query(F.data.startswith('addsource_'))
+@rss_router.callback_query(F.data.startswith('addsource_'))  #Обработка подписки на источник
 async def add_source(call: CallbackQuery):
     name_source = call.data.replace('addsource_', '')
-    print(name_source)
-
     source_data = get_from_database(conn=conn, data=['source_id'], table='sources', condition='`name` = %s', params=(name_source,))
     if not source_data:
         await call.answer('Источник не найден')
         return
 
     source_id = source_data[0][0]
-    print(source_id)
     tg_id = call.from_user.id
 
     user_data = get_from_database(conn=conn, data=['user_id'], table='users', condition='tg_id = %s', params=(tg_id,))
@@ -116,21 +116,62 @@ async def show_news(message: Message, state: FSMContext):
                 logger.error(f"Не удалось найти source_id для URL: {list_url[0]}")  # Логируем ошибку, если source_id не найден
 
 
-    # for url in list_url:
-    #     print(url)
 
-    #     list_new = parsing_url(list_url=list_url)
-    #     print(list_new)
-    #     title, description, link = list_new[0]
-    #     print(title)
-    #     print(description)
-    #     print(link)
-    #     check = check_news(conn=conn, title=title)
-    #     if check:
-    #         continue
-    #     else:
+@rss_router.message(F.text == 'Управление источниками', MainState.rss_state)
+async def change_rss(message: Message, state: FSMContext):
+    await message.answer("Здесь вы можете управлять своими новостными источниками", reply_markup=change_rss_kb())
 
-        
+
+@rss_router.message(F.text == 'Главное меню', MainState.rss_state)
+async def exit_rss(message: Message, state: FSMContext):
+    scheduler.shutdown()
+    await state.set_state(MainState.main_menu)
+    await message.answer('Отправка сообщений остановлена', reply_markup=main_kb())
+
+async def send_news_periodically(user_id: int, bot: Bot):
+    """Функция для отправки новостей по расписанию."""
+    try:
+        # Получение объекта бота из диспетчера
+ 
+
+        user_id_data = get_from_database(conn, ['user_id'], 'users', 'tg_id = %s', (user_id,))
+        if not user_id_data:
+            logger.error(f"Пользователь с tg_id {user_id} не найден в базе данных.")
+            return  # Прекращаем выполнение, если пользователь не найден
+
+        user_id_db = user_id_data[0][0]  # user_id из базы данных
+
+        list_source = get_from_database(conn, ['source_id'], 'subscriptions', 'user_id = %s', (user_id_db,))
+        if not list_source:
+            logger.info(f"Пользователь {user_id} не подписан ни на один источник.")
+            return  # Прекращаем выполнение, если нет подписок
+
+        list_url = [get_url_from_database(conn, i[0]) for i in list_source if get_url_from_database(conn, i[0])]
+        if not list_url:
+            logger.error(f"Не удалось получить URL для источников пользователя {user_id}.")
+            return
+
+        news_list = parsing_url(list_url)
+        if not news_list:
+            logger.info(f"Нет новых новостей для пользователя {user_id}.")
+            return
+
+        for title, description, link in news_list:
+            if not check_data(conn, 'news', 'user_id', 'link', user_id_db, link):
+                try:
+                    await bot.send_message(chat_id=user_id, text=f"<b>{title}</b>\n\n{description}\n\nСсылка: {link}", parse_mode="HTML")
+                    source_id_data = get_from_database(conn, ['source_id'], 'sources', 'url = %s', (list_url[0],))
+                    if source_id_data:
+                        source_id = source_id_data[0][0]
+                        add_data(conn, 'news', ['source_id', 'title', 'description', 'link', 'user_id'], (source_id, title, description, link, user_id_db))
+                    else:
+                        logger.error(f"Не удалось найти source_id для URL: {list_url[0]}") 
+
+                except Exception as e:
+                    logger.exception(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
+
+    except Exception as e:
+        logger.exception(f"Ошибка в функции send_news_periodically: {e}")
 
 
 

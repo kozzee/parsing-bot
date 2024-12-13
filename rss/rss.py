@@ -234,3 +234,46 @@ def check_news(conn, title):
             cursor.close()
 
 
+async def get_and_send_news(user_id: int, conn, bot):
+    """Получает новости для пользователя и отправляет их."""
+    try:
+        user_id_data = get_from_database(conn, ['user_id'], 'users', 'tg_id = %s', (user_id,))
+        if not user_id_data:
+            logger.error(f"Пользователь с tg_id {user_id} не найден в базе данных.")
+            return  # Прекращаем выполнение, если пользователь не найден
+
+        user_id_db = user_id_data[0][0]  # user_id из базы данных
+
+
+        list_source = get_from_database(conn, ['source_id'], 'subscriptions', 'user_id = %s', (user_id_db,))
+        if not list_source:
+            logger.info(f"Пользователь {user_id} не подписан ни на один источник.")
+            return  # Прекращаем выполнение, если нет подписок
+
+        list_url = [get_url_from_database(conn, i[0]) for i in list_source if get_url_from_database(conn, i[0])]
+        if not list_url:
+            logger.error(f"Не удалось получить URL для источников пользователя {user_id}.")
+            return
+
+        news_list = parsing_url(list_url)
+        if not news_list:
+            logger.info(f"Нет новых новостей для пользователя {user_id}.")
+            return
+
+        for title, description, link in news_list:
+            if not check_data(conn, 'news', 'user_id', 'link', user_id_db, link):
+                try:
+                    await bot.send_message(chat_id=user_id, text=f"<b>{title}</b>\n\n{description}\n\nСсылка: {link}", parse_mode="HTML")
+                    source_id_data = get_from_database(conn, ['source_id'], 'sources', 'url = %s', (list_url[0],)) # Передаем list_url[0]
+                    if source_id_data:
+                        source_id = source_id_data[0][0]
+                        add_data(conn, 'news', ['source_id', 'title', 'description', 'link', 'user_id'], (source_id, title, description, link, user_id_db))
+                    else:
+                        logger.error(f"Не удалось найти source_id для URL: {list_url[0]}")
+                except Exception as e:
+                    logger.exception(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
+
+    except Exception as e:
+        logger.exception(f"Ошибка в функции get_and_send_news: {e}")
+
+

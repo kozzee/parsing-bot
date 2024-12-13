@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardButton
 def main_kb():
     kb = [
         [KeyboardButton(text='🔍 Парсинг')],
-        [KeyboardButton(text='Новости')]
+        [KeyboardButton(text='📰Новости')]
     ]
     keyboard = ReplyKeyboardMarkup(
         keyboard=kb,
@@ -44,8 +44,7 @@ def two_key_kb(first_button_text, second_button_text):
 def rss_kb():
     kb = [
         [KeyboardButton(text='Начать пересылку')],
-        [KeyboardButton(text='Добавить источник')],
-        [KeyboardButton(text='Удалить источник')],
+        [KeyboardButton(text='Управление источниками')],
         [KeyboardButton(text='Показать последние новости')],
         [KeyboardButton(text='Главное меню')]
         ]
@@ -69,3 +68,17 @@ def source_kb(source: list) -> InlineKeyboardMarkup:
         )
     builder.adjust(1)
     return builder.as_markup()
+
+def change_rss_kb():
+    kb = [
+        [KeyboardButton(text='Добавить источник')],
+        [KeyboardButton(text='Удалить источник')],
+        [KeyboardButton(text='Главное меню')]
+    ]
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=kb,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        input_field_placeholder='Действие'
+    )
+    return keyboard
