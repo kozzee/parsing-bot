@@ -45,8 +45,10 @@ def rss_kb():
     kb = [
         [KeyboardButton(text='Начать пересылку')],
         [KeyboardButton(text='Добавить источник')],
-        [KeyboardButton(text='Удалить источник')]
-    ]
+        [KeyboardButton(text='Удалить источник')],
+        [KeyboardButton(text='Показать последние новости')],
+        [KeyboardButton(text='Главное меню')]
+        ]
     keyboard = ReplyKeyboardMarkup(
         keyboard=kb,
         resize_keyboard=True,

@@ -4,9 +4,12 @@ from aiogram.types import Message, CallbackQuery
 from keyboard.keyboard import one_key_kb, main_kb, source_kb
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data, check_data
+from rss.rss import connection_database, check_tgid, add_user, get_from_database, add_data, check_data, parsing_url, get_url_from_database, check_news
 from routers.start_rout import MainState
 import os
+from config import logger
+
+
 
 class RssState(StatesGroup):
     nosubscibing = State()
@@ -82,4 +85,54 @@ async def add_source(call: CallbackQuery):
         await call.answer('Произошла ошибка при подписке')
     else:
         await call.answer(f'Вы подписались на {name_source}')
+
+
+@rss_router.message(F.text == 'Показать последние новости', MainState.rss_state)
+async def show_news(message: Message, state: FSMContext):
+    user_id_data = get_from_database(conn, ['user_id'], 'users', 'tg_id = %s', (message.from_user.id,))
+    if not user_id_data:
+        await message.answer('Пользователь не найден')
+        return
+    user_id = user_id_data[0][0]
+
+    list_source = get_from_database(conn, ['source_id'], 'subscriptions', 'user_id = %s', (user_id,))
+    if not list_source:
+        await message.answer('Вы не подписаны ни на один источник')
+        return
+
+    list_url = [get_url_from_database(conn, i[0]) for i in list_source if get_url_from_database(conn, i[0])]
+    news_list = parsing_url(list_url)
+
+    for title, description, link in news_list:
+        if not check_data(conn, 'news', 'user_id', 'link', user_id, link):
+            await message.answer(f"<b>{title}</b>\n\n{description}\n\nСсылка: {link}")
+
+            # Используем get_from_database для получения source_id по URL
+            source_id_data = get_from_database(conn, ['source_id'], 'sources', 'url = %s', (list_url[0],))  # Передаем URL из list_url
+            if source_id_data:
+                source_id = source_id_data[0][0]
+                add_data(conn, 'news', ['source_id', 'title', 'description', 'link', 'user_id'], (source_id, title, description, link, user_id))
+            else:
+                logger.error(f"Не удалось найти source_id для URL: {list_url[0]}")  # Логируем ошибку, если source_id не найден
+
+
+    # for url in list_url:
+    #     print(url)
+
+    #     list_new = parsing_url(list_url=list_url)
+    #     print(list_new)
+    #     title, description, link = list_new[0]
+    #     print(title)
+    #     print(description)
+    #     print(link)
+    #     check = check_news(conn=conn, title=title)
+    #     if check:
+    #         continue
+    #     else:
+
+        
+
+
+
+
 

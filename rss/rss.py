@@ -1,23 +1,25 @@
-import mysql.connector, os
+import mysql.connector, requests
 from config import logger
-import requests
 from bs4 import BeautifulSoup
 
 import mysql.connector
 
 def connection_database(password):
     try:
-        with mysql.connector.connect(
+        conn = mysql.connector.connect(
             user='root',
             password=password,
             host='localhost',
             database='rss'
-        ) as conn:
-            print("Соединение с базой данных установлено.")
-            yield conn  # Возвращаем соединение как генератор для использования в with
+        )
+        print("Соединение с базой данных установлено.")
+        return conn  # Возвращаем само подключение
     except mysql.connector.Error as e:
         logger.error(f'Ошибка подключения к базе данных: {e}')
         raise  # Передаем исключение дальше
+
+
+
 
 
 
@@ -164,20 +166,16 @@ def get_subscription_id_from_database(conn, user_id):
     finally:
         if cursor:
             cursor.close()
+    
 
 
-
-
-
-
-from bs4 import BeautifulSoup
-import requests
 
 def parsing_url(list_url):
     results = []
     for url in list_url:    
         try:
-            response = requests.get(url)
+            requests.get(url)
+            response = requests.get(url, allow_redirects=True)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'lxml-xml')
             channel = soup.find('channel')
@@ -204,7 +202,35 @@ def parsing_url(list_url):
     return results
 
 
+def get_url_from_database(conn, source_id):
+    try:
+        cursor = conn.cursor()
+        query = f"SELECT url FROM sources WHERE source_id = %s"
+        cursor.execute(query, (source_id,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except mysql.connector.Error as e:
+        print(f'Ошибка получения URL из базы данных: {e}')
+        logger.error(f'Ошибка получения URL из базы данных: {e}')
+        return None
+    finally:
+        if cursor:
+            cursor.close()
 
 
+def check_news(conn, title):
+    try:
+        cursor = conn.cursor()
+        query = "SELECT 1 FROM news WHERE title = %s"
+        cursor.execute(query, (title,))
+        result = cursor.fetchone()
+        return bool(result)
+    except mysql.connector.Error as e:
+        print(f'Ошибка проверки новости: {e}')
+        logger.error(f'Ошибка проверки новости: {e}')
+        return False
+    finally:
+        if cursor:
+            cursor.close()
 
 

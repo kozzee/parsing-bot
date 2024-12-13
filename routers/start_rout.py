@@ -20,7 +20,7 @@ start_router = Router()
 
 @start_router.message(CommandStart())
 async def star_cmd(message: Message, state: FSMContext):
-    arr = parsing_url(list_url=['https://www.vedomosti.ru/rss/news.xml'])
+    arr = parsing_url(list_url=['https://cubiq.ru/news/feed/'])
     if arr: # Check if parsing returned a result. In case of error, it can return an empty list
         title, description, link = arr[0] # Tuple unpacking
         print(title)
