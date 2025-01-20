@@ -63,7 +63,7 @@ def source_kb(source: list) -> InlineKeyboardMarkup:
         builder.row(
             InlineKeyboardButton(
                 text=name_source,
-                callback_data=f'addsource_{name_source}'
+                callback_data=f'show_game_{name_source}'
             )
         )
     builder.adjust(1)
